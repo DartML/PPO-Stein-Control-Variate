@@ -51,7 +51,7 @@ python train.py Ant-v1 -b 10000 -ps small -c 0
 python train.py Humanoid-v1 -b 10000 -ps small -c 0
 python train.py HumanoidStandup-v1 -b 10000 -ps small -c 0
 ```
-The log files is in ./dartml_data. Further, we provide two shell scripts for tunning hyperparameters of stein control variates in the [scripts](optimization/scripts) folder.
+The log files is in optimization/dartml_data. Further, we provide two shell scripts for tunning hyperparameters of stein control variates in the [scripts](optimization/scripts) folder.
 
 For evaluation of PPO with/without Stein control variate, please see [here](evaluation).
 
