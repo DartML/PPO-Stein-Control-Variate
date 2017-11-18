@@ -40,7 +40,7 @@ if __name__ == "__main__":
     parser.add_argument('-r', '--reg_scale', help='regularization scale on phi function', type=float, default=.0)
     parser.add_argument('-lr', '--phi_lr', help='phi learning_rate', type=float, default=0.0005)
     parser.add_argument('-ph', '--phi_hs', 
-                        help='phi structure, default 100x100x5 for mlp, 64x64x5 for quadratic', 
+                        help='phi structure, default 100x100 for mlp', 
                         type=str, default='100x100')
     
     parser.add_argument('-ps', '--policy_size', 
