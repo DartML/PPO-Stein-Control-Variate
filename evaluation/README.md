@@ -4,7 +4,9 @@ This is the code of the evaluation part of [Stein control variate](https://arxiv
 
 ## Running Examples
 
-We take Walker2d-v1 environment as an example. First we train and generate evaluation data:
+Take Walker2d-v1 environment as an example.
+
+Train and generate evaluation data:
 ```shell
 # Train Policy
 bash walker2d_train.sh
@@ -13,7 +15,7 @@ bash walker2d_train.sh
 bash walker2d_eval.sh
 ```
 
-We can visualize the variance of different optimization Phi function methods:
+Visualize the variance plot of different optimization Phi function methods:
 
 ```python
 # plot variance figure
