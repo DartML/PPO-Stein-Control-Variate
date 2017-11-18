@@ -51,7 +51,6 @@ if __name__ == "__main__":
             function FitQ or MinVar', type=str, default='MinVar')
     
     args = parser.parse_args()
-    import os
 
     # logs
     dir_name = os.path.join('dartml_data', 'env=%s/'%(args.env_name))

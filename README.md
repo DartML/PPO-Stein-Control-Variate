@@ -20,7 +20,7 @@ The code is based on the excellent implementation of [PPO](https://github.com/pa
 You can run following commands to reproduce our results:
 
 ```Shell
-cs optimization
+cd optimization
 
 # For MinVar optimization
 python train.py HalfCheetah-v1 -b 10000 -ps large -po MinVar -p 500 
@@ -51,8 +51,9 @@ python train.py Ant-v1 -b 10000 -ps small -c 0
 python train.py Humanoid-v1 -b 10000 -ps small -c 0
 python train.py HumanoidStandup-v1 -b 10000 -ps small -c 0
 ```
-You can find the log files in ./dartml_data. Further, we provide two shell scripts for tunning hyperparameters of stein control variates in the [scripts](optimization/scripts) folder.
+The log files is in ./dartml_data. Further, we provide two shell scripts for tunning hyperparameters of stein control variates in the [scripts](optimization/scripts) folder.
 
+For evaluation of PPO with/without Stein control variate, please see [here](evaluation/README.md).
 
 ## Citations
 If you find Stein control variates helpful, please cite following papers:
@@ -63,7 +64,7 @@ If you find Stein control variates helpful, please cite following papers:
 
 ## Feedbacks
 
-If you have any questions about the code or the paper, please feel free to [contact us](mailto:uestcliuhao@gmail.com).
+If you have any questions about the code or the paper, please feel free to [contact us](mailto:yihaof95@gmail.com).
 
 
 

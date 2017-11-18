@@ -1,75 +1,52 @@
 """
-    NN Policy with KL Divergence 
-    Constraint and Stein control variates
+    Policy Optimization Policy with Stein control variates
 """
 
+import os
+import pickle
 import numpy as np
 import tensorflow as tf
-import tb_logger as logger 
-from utils import progressbar
+
+import tb_logger as logger
 from phi_functions.ContinousMLPPhiFunction import ContinousMLPPhiFunction
 
 
 class Policy(object):
     """ NN-based policy approximation """
-    def __init__(self, obs_dim, 
+    def __init__(self, 
+                obs_dim, 
                 act_dim, 
                 kl_targ, 
-                hid1_mult,
-                policy_logvar,
                 epochs, 
                 phi_epochs, 
                 policy_size='large',
-                phi_hidden_sizes='100x100',
-                c_ph=1, 
+                phi_hidden_sizes='100x50',
                 reg_scale=.0,
                 lr_phi=0.0005,
                 phi_obj='MinVar'):
-        """
-        Args:
-            obs_dim: num observation dimensions (int)
-            act_dim: num action dimensions (int)
-            kl_targ: target KL divergence between pi_old and pi_new
-            hid1_mult: size of first hidden layer, multiplier of obs_dim
-            policy_logvar: natural log of initial policy variance
-            epochs: PPO update epochs
-            phi_epochs: stein control variates update epochs
-            policy_size: policy_size according to environments
-            phi_hidden_sizes: control variate Phi network size
-            c_ph: whether use control varaite
-            reg_scale: regularization term
-            lr_phi: Phi learning rate
-            phi_obj: Updating Phi methods FitQ or MinVar
-        """
-
+     
         self.beta = 1.0  # dynamically adjusted D_KL loss multiplier
         self.eta = 50  # multiplier for D_KL-kl_targ hinge-squared loss
         self.kl_targ = kl_targ
         self.epochs = epochs
-        self.hid1_mult = hid1_mult
-        self.policy_logvar = policy_logvar
-        self.phi_epochs = phi_epochs 
+        self.phi_epochs = phi_epochs
         self.lr = None # lr for policy neural network
         self.lr_phi = None # lr for phi function neural network
-        self.lr_multiplier = 1.0  # dynamically adjust policy's lr 
+        self.lr_multiplier = 1.0  # dynamically adjust policy's lr when D_KL out of control
         self.obs_dim = obs_dim
         self.act_dim = act_dim
-        self.c_ph = c_ph
         self.policy_size=policy_size
-        self.phi_obj = phi_obj
+        self.phi_obj=phi_obj
 
         # create Phi networks
         self.reg_scale = reg_scale
         phi_hidden_sizes = [int(x) for x in phi_hidden_sizes.split("x")]
-        self.phi = ContinousMLPPhiFunction(
-                    obs_dim, act_dim, 
-                    hidden_sizes=phi_hidden_sizes, 
-                    regular_scale=reg_scale)
-    
-        self.lr_phi = lr_phi
+        self.phi = ContinousMLPPhiFunction(obs_dim, act_dim, 
+                    hidden_sizes=phi_hidden_sizes, regular_scale=reg_scale)
         
+        self.lr_phi = lr_phi
+
         self._build_graph()
-        self._init_session()
 
     def _build_graph(self):
         """ Build and initialize TensorFlow graph """
@@ -77,12 +54,35 @@ class Policy(object):
         with self.g.as_default():
             self._placeholders()
             self._policy_nn()
-      
+  
             self._logprob()
             self._kl_entropy()
             self._sample()
             self._loss_train_op()
             self.init = tf.global_variables_initializer()
+            
+            # Save only policy parameters
+            policy_vars = tf.get_collection(\
+                tf.GraphKeys.TRAINABLE_VARIABLES,
+                scope='policy_nn')
+            
+            var_dict = {}
+            for var in policy_vars:
+                logger.log(var.name)
+                var_dict[var.name]=  var
+            
+            self._init_session()
+            self.saver = tf.train.Saver(var_dict)
+
+    
+    def load_model(self, log_dir='log_dir/'):
+        saver = tf.train.import_meta_graph(
+                os.path.join(log_dir, 'policy_models/', 
+                'policy.ckpt.meta'))
+        
+        saver.restore(self.sess, 
+            tf.train.latest_checkpoint(
+            os.path.join(log_dir, 'policy_models/')))
 
     def _placeholders(self):
         """ Input placeholders"""
@@ -90,45 +90,39 @@ class Policy(object):
         self.obs_ph = tf.placeholder(tf.float32, (None, self.obs_dim), 'obs')
         self.act_ph = tf.placeholder(tf.float32, (None, self.act_dim), 'act')
         self.advantages_ph = tf.placeholder(tf.float32, (None,), 'advantages')
-        
         # strength of D_KL loss terms:
         self.beta_ph = tf.placeholder(tf.float32, (), 'beta')
         self.eta_ph = tf.placeholder(tf.float32, (), 'eta')
-        
         # learning rate:
-        self.lr_ph = tf.placeholder(tf.float32, (), 'eta')
-        self.lr_phi_ph = tf.placeholder(tf.float32, (), 'lr_phi')
-   
+        self.lr_ph = tf.placeholder(tf.float32, (), 'lr')
+        self.c_ph = tf.placeholder(tf.float32, (), 'c_ph')
+
+        self.lr_phi_ph = tf.placeholder(tf.float32, (), 'eta_phi')
+
         self.old_log_vars_ph = tf.placeholder(tf.float32, (self.act_dim,), 'old_log_vars')
         self.old_means_ph = tf.placeholder(tf.float32, (None, self.act_dim), 'old_means')
 
 
+
     def _policy_nn(self):
-        """ 
-            Neural net for policy 
-            approximation function
-        """
         
         with tf.variable_scope("policy_nn"):
-            # hidden layer sizes determined by obs_dim 
-            # and act_dim (hid2 is geometric mean)
+            # hidden layer sizes determined by obs_dim and act_dim (hid2 is geometric mean)
             if self.policy_size == 'small':
                 logger.log("using small structure")
-                
                 hid1_size = self.obs_dim # * 10
                 hid3_size = self.act_dim # * 10
                 hid2_size = int(np.sqrt(hid1_size * hid3_size))
-            
+                logvar_speed = (10 * hid3_size) // 48 
             elif self.policy_size == 'large':
                 logger.log('Using large structure ')
-                
-                hid1_size = self.obs_dim * self.hid1_mult
+                hid1_size = self.obs_dim  * 10
                 hid3_size = self.act_dim  * 10
                 hid2_size = int(np.sqrt(hid1_size * hid3_size))
+                logvar_speed = (hid3_size) // 48 
             else:
                 raise NotImplementedError
             
-            # heuristic to set learning rate based on NN size
             self.lr = 9e-4 / np.sqrt(hid2_size)  # 9e-4 empirically determined
             
             # 3 hidden layers with tanh activations
@@ -158,22 +152,22 @@ class Policy(object):
                         name="means")
 
             logvar_speed = (10 * hid3_size) // 48
+
             log_vars = tf.get_variable('logvars', 
-                        (logvar_speed, self.act_dim), 
-                        tf.float32,
-                        tf.constant_initializer(0.0))
-
-
-            self.log_vars = tf.reduce_sum(log_vars, axis=0) + self.policy_logvar
+                            (logvar_speed, self.act_dim), 
+                            tf.float32,
+                            tf.constant_initializer(0.0))
+            
+            self.log_vars = tf.reduce_sum(log_vars, axis=0) - 1.0
 
             self.policy_nn_vars = tf.get_collection(\
-                    tf.GraphKeys.TRAINABLE_VARIABLES, 
-                    scope='policy_nn')
+                        tf.GraphKeys.TRAINABLE_VARIABLES, 
+                        scope='policy_nn')
 
-            logger.log('Policy Params -- h1: {}, h2: {}, \
-                    h3: {}, lr: {:.3g}, logvar_speed: {}'
-                    .format(hid1_size, hid2_size, hid3_size, 
-                    self.lr, logvar_speed))
+            logger.log('Policy Params -- h1: {}, h2: {},\
+                h3: {}, lr: {:.3g}, logvar_speed: {}'
+                  .format(hid1_size, hid2_size, 
+                  hid3_size, self.lr, logvar_speed))
 
 
     def _logprob(self):
@@ -218,18 +212,17 @@ class Policy(object):
                     (np.log(2 * np.pi) + 1) + \
                     tf.reduce_sum(self.log_vars))
 
-    def _sample(self):
-        """ 
-            Sample from distribution, 
-            given observation 
-        """
 
+    def _sample(self):
+        """ Sample from distribution, given observation """
         self.sampled_act = (self.means +
                             tf.exp(self.log_vars / 2.0) *
                             tf.random_normal(shape=(self.act_dim,)))
 
+
     def _loss_train_op(self):
-      
+   
+
         # get Phi function and its derivatives 
         phi_value, phi_act_g = self.phi(self.obs_ph, self.act_ph, reuse=False)
         self.phi_value = phi_value
@@ -278,52 +271,89 @@ class Policy(object):
                         var_list= self.policy_nn_vars)
 
         
-        if self.reg_scale > 0.:
-            reg_variables = tf.get_collection(\
-                    tf.GraphKeys.REGULARIZATION_LOSSES)
+        # phi loss train op
+        if self.phi_obj == 'MinVar':
+            means_mse = tf.reduce_sum(\
+                    tf.reduce_mean( \
+                    tf.square(means_inner - \
+                    tf.reduce_mean(means_inner, \
+                    axis=0)), axis = 0))
             
+            logstd_vars_mse = tf.reduce_sum(\
+                    tf.reduce_mean(\
+                    tf.square(log_vars_inner - \
+                    tf.reduce_mean(log_vars_inner,\
+                    axis=0)), axis = 0))
+                        
+            gradient = tf.concat([means_inner, log_vars_inner], axis=1)
+
+            est_A = tf.gather(gradient, tf.range(0, tf.shape(gradient)[0] //2))
+
+            est_B = tf.gather(gradient, 
+                    tf.range(tf.shape(gradient)[0] //2, 
+                    tf.shape(gradient)[0]))
+            
+            # calculate loss
+            est_var = tf.reduce_sum(\
+                    tf.square(tf.reduce_mean(\
+                    est_A, axis=0) - \
+                    tf.reduce_mean(est_B, axis=0)))
+        
+        
+        if self.reg_scale > 0.:
+            reg_variables = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
             reg_term = tf.contrib.layers.apply_regularization(
-                        self.phi.kernel_regularizer, 
-                        reg_variables)
+                        self.phi.kernel_regularizer, reg_variables)
+           
+            for var in reg_variables:
+                logger.log("regularized, ", var.name, var.shape)
         else:
             reg_term = 0.
 
-        if self.c_ph == 1.:
-            if self.phi_obj == 'FitQ':
-                self.phi_loss = tf.reduce_mean(\
-                        tf.square(self.advantages_ph - \
-                        self.phi_value), axis=0) + reg_term
+        if self.phi_obj == 'FitQ':
+            self.phi_loss = tf.reduce_mean(\
+                    tf.square(self.advantages_ph - \
+                    self.phi_value), axis=0) + reg_term
             
-                logger.log('phi_with FitQ as objective function')
-        
-            elif self.phi_obj == 'MinVar':
-                self.means_mse = tf.reduce_sum(\
-                        tf.reduce_mean( \
-                        tf.square(means_inner - \
-                        tf.reduce_mean(means_inner, \
-                        axis=0)), axis = 0))
-            
-                self.logstd_vars_mse = tf.reduce_sum(\
-                        tf.reduce_mean( \
-                        tf.square(log_vars_inner - \
-                        tf.reduce_mean(log_vars_inner, \
-                        axis=0)), axis = 0))
-            
-                self.phi_loss = self.means_mse + self.logstd_vars_mse + reg_term
-                logger.log('phi with MinVar as objecive function')
-            
-            else:
-                raise NotImplementedError
-            
-            phi_optimizer = tf.train.AdamOptimizer(self.lr_phi_ph)      
-            self.phi_train_op = phi_optimizer.minimize(\
-                        self.phi_loss, 
-                        var_list=self.phi_nn_vars)
-            
-        elif self.c_ph == 0.:
-            logger.log("Training with PPO")            
-            self.phi_train_op = tf.no_op 
+            logger.log('phi_with FitQ as objective function')
 
+        elif self.phi_obj == 'MinVar':
+            
+            self.phi_loss = means_mse + logstd_vars_mse + reg_term
+            logger.log('phi with MinVar as objecive function')
+        
+        else:
+            raise NotImplementedError
+        
+       
+        phi_optimizer = tf.train.AdamOptimizer(self.lr_phi_ph)      
+        self.phi_train_op = phi_optimizer.minimize(self.phi_loss, var_list=self.phi_nn_vars)
+
+        self.means_inner = means_inner
+        self.log_vars_inner = log_vars_inner
+
+    def get_batch_gradient(self, observes, actions, advantages, c):
+        feed_dict = {self.obs_ph: observes,
+                     self.act_ph: actions,
+                     self.advantages_ph: advantages,
+                     self.beta_ph: self.beta,
+                     self.eta_ph: self.eta,
+                     self.lr_ph: self.lr * self.lr_multiplier,
+                     self.lr_phi_ph: self.lr_phi,
+                     self.c_ph:c}
+        old_means_np, old_log_vars_np = self.sess.run([self.means, self.log_vars],
+                                                      feed_dict)
+        feed_dict[self.old_log_vars_ph] = old_log_vars_np
+        feed_dict[self.old_means_ph] = old_means_np
+        
+        means_gradient, vars_gradient, phi_loss = self.sess.run(
+                        [self.means_inner, 
+                        self.log_vars_inner, self.phi_loss],
+                        feed_dict=feed_dict)
+        
+        return {"mu_grad":means_gradient,
+                'sigma_grad':vars_gradient, 
+                'phi_loss':phi_loss}
 
 
     def _init_session(self):
@@ -337,67 +367,59 @@ class Policy(object):
 
         return self.sess.run(self.sampled_act, feed_dict=feed_dict)
 
-    def update(self, observes, actions, advantages, use_lr_adjust, ada_kl_penalty):
-        """ Update policy based on observations, actions and advantages
-
-        Args:
-            observes: observations, shape = (N, obs_dim)
-            actions: actions, shape = (N, act_dim)
-            advantages: advantages, shape = (N,)
-            phi_value: phi_value, shape = (N,)
-            phi_act_g: phi_act_g, shape = (N, act_dim)
-        """
+    def update(self, load_policy,  
+            observes, actions, 
+            advantages, use_lr_adjust, 
+            ada_kl_penalty, c=1):
+ 
         feed_dict = {self.obs_ph: observes,
                      self.act_ph: actions,
                      self.advantages_ph: advantages,
                      self.beta_ph: self.beta,
                      self.eta_ph: self.eta,
                      self.lr_ph: self.lr * self.lr_multiplier,
-                     self.lr_phi_ph: self.lr_phi}
+                     self.lr_phi_ph: self.lr_phi,
+                     self.c_ph:c}
+
         old_means_np, old_log_vars_np = self.sess.run([self.means, self.log_vars],
                                                       feed_dict)
         feed_dict[self.old_log_vars_ph] = old_log_vars_np
         feed_dict[self.old_means_ph] = old_means_np
         loss, kl, entropy = 0, 0, 0
+
+        for _ in range(self.phi_epochs):
+            self.sess.run(self.phi_train_op, feed_dict)
         
-        if self.c_ph == 1.:
-            # Update phi function & policy network
-            logger.log("Training Phi for %d epochs"%self.phi_epochs)
-            
-            for _ in progressbar(range(self.phi_epochs), "Train Phi:", 25):
-                self.sess.run(self.phi_train_op, feed_dict)
-                phi_loss = self.sess.run(self.phi_loss, feed_dict)
-
-            logger.record_tabular("Phi_loss", phi_loss)
+        if load_policy == 'save':
         
-        # Training policy
-        logger.log("Training Policy for %d epochs"%self.epochs)
-        for _ in progressbar(range(self.epochs), "Train Policy", 25):
-            self.sess.run(self.train_op, feed_dict)
-            loss, kl, entropy = self.sess.run([self.loss, self.kl, self.entropy], feed_dict)
-            if kl > self.kl_targ * 4:  # early stopping if D_KL diverges badly
-                break
+            for e in range(self.epochs):
+                self.sess.run(self.train_op, feed_dict)
+                loss, kl, entropy = self.sess.run([self.loss, 
+                        self.kl, self.entropy], feed_dict)
+                if kl > self.kl_targ * 4:  
+                    break
+          
+            if (ada_kl_penalty):
+                if kl > self.kl_targ * 2:  # servo beta to reach D_KL target
+                    self.beta = np.minimum(35, 1.5 * self.beta)  # max clip beta
+                    if (use_lr_adjust):
+                        if self.beta > 30 and self.lr_multiplier > 0.1:
+                            self.lr_multiplier /= 1.5
+                elif kl < self.kl_targ / 2:
+                    self.beta = np.maximum(1 / 35, self.beta / 1.5)  # min clip beta
+                    if (use_lr_adjust):
+                        if self.beta < (1 / 30) and self.lr_multiplier < 10:
+                          self.lr_multiplier *= 1.5
 
-        if (ada_kl_penalty):
-            if kl > self.kl_targ * 2:  # servo beta to reach D_KL target
-                self.beta = np.minimum(35, 1.5 * self.beta)  # max clip beta
-                if (use_lr_adjust):
-                    if self.beta > 30 and self.lr_multiplier > 0.1:
-                        self.lr_multiplier /= 1.5
-            elif kl < self.kl_targ / 2:
-                self.beta = np.maximum(1 / 35, self.beta / 1.5)  # min clip beta
-                if (use_lr_adjust):
-                    if self.beta < (1 / 30) and self.lr_multiplier < 10:
-                        self.lr_multiplier *= 1.5
-
-        logger.record_dicts({
-            'PolicyLoss': loss,
-            'PolicyEntropy': entropy,
-            'KL': kl,
-            'Beta': self.beta,
-            '_lr_multiplier': self.lr_multiplier})
+            logger.record_dicts({
+                'PolicyLoss': loss,
+                'PolicyEntropy': entropy,
+                'KL': kl,
+                'Beta': self.beta,
+                '_lr_multiplier': self.lr_multiplier})
         
 
-    def close_sess(self):
-        """ Close TensorFlow session """
-        self.sess.close()
+    def save_policy(self, model_dir="models/policy_models"):
+        self.saver.save(self.sess, 
+                os.path.join(model_dir, 
+                "policy.ckpt"))

@@ -329,13 +329,17 @@ def main(env_name, num_iterations, gamma, lam, kl_targ,
     for _ in range(num_iterations):
         logger.log("\n#Training Iter %d"%(_))
         logger.log("Draw Samples..")
+        
         trajectories = run_policy(env, policy, scaler, 
             batch_size=batch_size, max_timesteps=max_timesteps) 
+        
         add_value(trajectories, val_func)  # add estimated values to episodes
         add_disc_sum_rew(trajectories, gamma)  # calculated discounted sum of Rs
         add_gae(trajectories, gamma, lam)  # calculate advantage
+        
         # concatenate all episodes into single NumPy arrays
         observes, actions, advantages, disc_sum_rew = build_train_set(trajectories)
+        
         # add various stats to training log:
         log_batch_stats(observes, actions, advantages, disc_sum_rew)
 

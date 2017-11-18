@@ -103,3 +103,5 @@ ENV/
 # log files
 log-files 
 .vscode
+eval_data/
+models/
