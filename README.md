@@ -10,9 +10,9 @@ The code is based on the excellent implementation of [PPO](https://github.com/pa
 
 ## Dependencies
 
-* Python 3.5
+* Python 3.5 .
 * [MuJoCo](http://www.mujoco.org/).
-* TensorFlow (>=1.3)
+* TensorFlow (>=1.3).
 * Gym - [Installation instructions](https://gym.openai.com/docs).
 
 ## Running Experiments
