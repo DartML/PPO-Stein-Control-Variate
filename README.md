@@ -20,6 +20,8 @@ The code is based on the excellent implementation of [PPO](https://github.com/pa
 You can run following commands to reproduce our results:
 
 ```Shell
+cs optimization
+
 # For MinVar optimization
 python train.py HalfCheetah-v1 -b 10000 -ps large -po MinVar -p 500 
 python train.py Walker2d-v1 -b 10000 -ps large -po MinVar -p 500 
