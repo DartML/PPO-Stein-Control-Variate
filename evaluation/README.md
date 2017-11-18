@@ -21,4 +21,4 @@ python traj_visualize.py
 ```
 
 ## Notice
-Currently the evaluation code is a little messy. We will make it clean and easy for testing as soon as possible.
+Currently the evaluation code is a little messy. We will make it clean and easy for testing soon.
