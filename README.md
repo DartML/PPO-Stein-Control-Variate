@@ -1,4 +1,4 @@
-# Stein-Proximal-Policy-Optimization
+# Proximal Policy Optimization With Stein Control Variate
 
 In this work, we propose a control variate method to effectively reduce variance for policy gradient methods motivated by Stein's identity.
 
