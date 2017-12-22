@@ -278,7 +278,13 @@ def eval_models(env_name, num_episodes,
     add_disc_sum_rew(trajectories, gamma)  
     add_gae(trajectories, gamma, lam) 
     
-    observes, actions, advantages, disc_sum_rew = build_train_set(trajectories)
+    #Split data into validation and training data
+    random.shuffle(trajectories)
+    t_trajectories = trajectories[:int(len(trajectories)/2)]
+    v_trajectories = trajectories[int(len(trajectories)/2):]
+
+    t_observes, t_actions, t_advantages, t_disc_sum_rew = build_train_set(t_trajectories)
+    v_observes, v_actions, v_advantages, v_disc_sum_rew = build_train_set(v_trajectories)
 
     sub_folder = "eval_data/%s_%s_data_seed=%d_max-steps=%d"%(\
                         env_name, phi_obj, 
@@ -287,17 +293,17 @@ def eval_models(env_name, num_episodes,
         os.mkdir(sub_folder)
     
     # save original gradient
-    mc_grad_info = policy.get_batch_gradient(observes, actions, advantages, c=0.)
+    mc_grad_info = policy.get_batch_gradient(v_observes, v_actions, v_advantages, c=0.)
     mc_grad_info['traj_lens'] = traj_len_list
     with open(sub_folder+'/mc_num_episode=%d.pkl'%(num_episodes), 'wb') as fp:
         pickle.dump(mc_grad_info, fp)
     
     
-    policy.update(load_model, observes, actions, advantages,
+    policy.update(load_model, t_observes, t_actions, t_advantages,
             use_lr_adjust, ada_kl_penalty, c=1)  # update policy
             
-    stein_grad_info = policy.get_batch_gradient(observes, \
-                    actions, advantages, c=1.)
+    stein_grad_info = policy.get_batch_gradient(v_observes, \
+                    v_actions, v_advantages, c=1.)
 
     
     stein_grad_info['traj_lens'] = traj_len_list
