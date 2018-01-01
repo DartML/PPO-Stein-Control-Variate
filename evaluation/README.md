@@ -14,6 +14,7 @@ bash walker2d_train.sh
 #Evaluation Policy with or without Stein control variates
 bash walker2d_eval.sh
 ```
+NB: different max-timesteps lead to different scale of variance: see [results](./results).
 
 Visualize the variance plot of different optimization Phi function methods:
 
