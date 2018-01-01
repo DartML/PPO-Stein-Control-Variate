@@ -15,6 +15,7 @@ bash walker2d_train.sh
 bash walker2d_eval.sh
 ```
 NB: different max-timesteps lead to different scale of variance: see [results](./results).
+Max-timesteps can be set through `-m` option.
 
 Visualize the variance plot of different optimization Phi function methods:
 
