@@ -200,7 +200,8 @@ def train_models(env_name, num_episodes,
             max_timesteps=max_timesteps)
     
     episode = 0
-    for _ in range(200):
+    for i in range(2000):
+        print("sampling and training at %s iteration\n"%(i))
         trajectories, traj_len_list = run_policy(env, policy, scaler, 
                             num_episodes, max_timesteps=max_timesteps)
     
@@ -286,8 +287,8 @@ def eval_models(env_name, num_episodes,
     t_observes, t_actions, t_advantages, t_disc_sum_rew = build_train_set(t_trajectories)
     v_observes, v_actions, v_advantages, v_disc_sum_rew = build_train_set(v_trajectories)
 
-    sub_folder = "eval_data/%s_%s_data_seed=%d_max-steps=%d"%(\
-                        env_name, phi_obj, 
+    sub_folder = "max_timesteps=%s_eval_data/%s_%s_data_seed=%d_max-steps=%d"%(\
+                        max_timesteps, env_name, phi_obj, 
                         seed, max_timesteps)
     if not os.path.exists(sub_folder):
         os.mkdir(sub_folder)

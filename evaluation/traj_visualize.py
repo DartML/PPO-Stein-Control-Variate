@@ -49,27 +49,37 @@ def gen_index(indices, max_length):
 
 if __name__ == '__main__':
 
-    batch_range= range(10, 50, 5)
+    batch_range= range(10, 100, 10)
 
-    seeds  = 43
+    seeds  = [13, 43]
     env_name = 'Walker2d-v1'
-    phi_obj = 'MinVar'
 
-    k = 2000
-    plot_stein_vars = []
-    plot_mc_vars = []
+    try:
+        phi_obj = input("Enter type of evaluation, FitQ or MinVar: \n")
+    except ValueError:
+        phi_obj = 'FitQ'
+
+    try: 
+        max_timesteps = input("Enter max_timesteps: \n")
+    except ValueError:
+        max_timesteps = 50
+    
+    k = 20000
     plot_stein_loss = []
     plot_mc_loss = []
                                  
     for seed in seeds:
 
-        prefix_dir = 'eval_data/%s_%s_seed=%d_max-steps=500'%(env_name, phi_obj, seed)
+        prefix_dir = 'max_timesteps=%s_eval_data/%s_%s_data_seed=%d_max-steps=%s'%(max_timesteps, env_name, phi_obj, seed, max_timesteps)
     
         print(prefix_dir) 
-    
+
         # This is gradient for each trajectory
         mc_x = []
         stein_x = []
+        plot_stein_vars = []
+        plot_mc_vars = []
+    
         mc_grads, stein_grads, mc_phi_loss, \
                     stein_phi_loss = load_sample_grads(batch_range, prefix_dir)
 
@@ -111,15 +121,17 @@ if __name__ == '__main__':
                 stein_vars.append(np.sum(stein_var))
         
             plot_stein_vars.append(np.mean(stein_vars))
-    
-    print (mc_x)
-    print (stein_x)
-    print (np.log(plot_stein_vars))
-    print (np.log(plot_mc_vars))
-    plt.plot(np.log(mc_x), np.log(plot_mc_vars), label='mc')
-    plt.plot(np.log(stein_x), np.log(plot_stein_vars), label='stein')
-    plt.legend()
-    plt.savefig('%s_avg_variance.pdf'%(env_name))
+
+        print (seed)
+        print (mc_x)
+        print (stein_x)
+        print (np.log(plot_stein_vars))
+        print (np.log(plot_mc_vars))
+        plt.plot(np.log(mc_x), np.log(plot_mc_vars), label='mc')
+        plt.plot(np.log(stein_x), np.log(plot_stein_vars), label='stein')
+        plt.legend()
+        plt.savefig('results/' + '%s_avg_variance_seed=%s_max-steps=%s_phi_obj=%s.pdf'%(env_name, seed, max_timesteps, phi_obj))
+        plt.gcf().clear()
 
 
 

@@ -37,7 +37,6 @@ if __name__ == "__main__":
                         help='if load, save or without doing anything', type=str, default='none')
     args = parser.parse_args()
 
-    args = parser.parse_args()
     if args.load_model == 'save':
         if not os.path.exists('models'):
             os.makedirs('models')
@@ -45,8 +44,8 @@ if __name__ == "__main__":
         train_models(**vars(args))
     
     elif args.load_model == 'load':
-        if not os.path.exists('eval_data'):
-            os.makedirs('eval_data')
+        if not os.path.exists('max_timesteps=%s_eval_data'%(args.max_timesteps)):
+            os.makedirs('max_timesteps=%s_eval_data'%(args.max_timesteps))
 
         eval_models(**vars(args))
     
