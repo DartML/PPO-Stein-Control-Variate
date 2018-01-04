@@ -221,6 +221,8 @@ def train_models(env_name, num_episodes,
     # Save models
     policy.save_policy()
     val_func.save_val_func()
+    with open('models/scaler/scaler.pkl', 'wb') as output:
+        pickle.dump(scaler, output, pickle.HIGHEST_PROTOCOL)
     logger.log("saved model")
 
 
@@ -242,7 +244,10 @@ def eval_models(env_name, num_episodes,
     now = datetime.utcnow().strftime("%b-%d_%H:%M:%S") 
     aigym_path = os.path.join('log-files/', env_name, now)
     env = wrappers.Monitor(env, aigym_path, force=True, video_callable=False)
-    scaler = Scaler(obs_dim)
+    # scaler = Scaler(obs_dim)
+    logger.log("loading scaler")
+    with open('models/scaler/scaler.pkl', 'rb') as input:
+        scaler = pickle.load(input)
     val_func = NNValueFunction(obs_dim)
     policy = Policy(obs_dim, act_dim, 
             kl_targ,epochs, 

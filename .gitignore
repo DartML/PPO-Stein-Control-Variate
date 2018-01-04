@@ -102,5 +102,19 @@ ENV/
 
 # log files
 log-files 
+bak
+fun
 .vscode
 eval_data/
+
+# exp directory
+500_200
+500_1000_fitq
+500500
+fitq_1000_500
+wybie
+
+# misc
+walker2d_eval_500_200.sh
+walker2d_eval_500_500.sh
+Walker2d-v1_avg_variance_seed=13_max-steps=50_phi_obj=MinVar.pdf
