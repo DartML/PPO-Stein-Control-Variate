@@ -118,4 +118,10 @@ wybie
 walker2d_eval_500_200.sh
 walker2d_eval_500_500.sh
 Walker2d-v1_avg_variance_seed=13_max-steps=50_phi_obj=MinVar.pdf
+
+# os
 .DS_Store
+*.DS_Store
+._.DS_Store
+**/.DS_Store
+**/._.DS_Store
