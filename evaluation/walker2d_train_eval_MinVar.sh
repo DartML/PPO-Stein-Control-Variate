@@ -4,7 +4,7 @@
 # python run.py Walker2d-v1 -c 0.0 -p 0 -sha save -s 13
 
 # eval on a saved policy
-for ((s=13; s<=33; s+=30))
+for ((s=13; s<=33; s+=30)) # evaluate on one seed
     do
     	for ((i=10; i<=100; i+=10))
             do
