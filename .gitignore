@@ -1,4 +1,5 @@
 # Byte-compiled / optimized / DLL files
+**/__pycache__
 __pycache__/
 *.py[cod]
 *$py.class
@@ -113,11 +114,20 @@ eval_data/
 500500
 fitq_1000_500
 wybie
+plot
 
 # misc
+ContinousLinearPhiFunction.py
+ContinousQuadraticPhiFunction.py
 walker2d_eval_500_200.sh
 walker2d_eval_500_500.sh
 Walker2d-v1_avg_variance_seed=13_max-steps=50_phi_obj=MinVar.pdf
+max_timesteps=500_eval_data
+evaluation.bak
+max_timesteps=1000_eval_data
+aft
+pre
+com 
 
 # os
 .DS_Store

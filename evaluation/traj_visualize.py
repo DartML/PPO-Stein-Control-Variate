@@ -49,23 +49,29 @@ def gen_index(indices, max_length):
 
 if __name__ == '__main__':
 
-    batch_range= range(10, 100, 10)
+    batch_range= range(10, 80, 10)
 
-    seeds  = [13, 43]
     env_name = 'Walker2d-v1'
 
     try:
+        seeds = [int(x) for x in input("Enter seeds of evaluation saved data, seperated by space\n").split()]
+    except (SyntaxError, ValueError):
+        seeds = list(range(13, 253, 30))
+    if not seeds:
+        seeds = list(range(13, 253, 30))        
+    print(seeds)
+
+    try:
         phi_obj = input("Enter type of evaluation, FitQ or MinVar: \n")
-    except ValueError:
+    except (SyntaxError, ValueError):
+        print("no choice about evaluation type")
         phi_obj = 'FitQ'
 
     try: 
         max_timesteps = input("Enter max_timesteps: \n")
-    except ValueError:
+    except (SyntaxError, ValueError):
+        print("no choice about max_timesteps")        
         max_timesteps = 50
-    
-    if not os.path.exists('results'):
-        os.makedirs('results')
     
     k = 20000
     plot_stein_loss = []
