@@ -64,6 +64,9 @@ if __name__ == '__main__':
     except ValueError:
         max_timesteps = 50
     
+    if not os.path.exists('results'):
+        os.makedirs('results')
+    
     k = 20000
     plot_stein_loss = []
     plot_mc_loss = []
