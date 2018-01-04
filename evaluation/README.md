@@ -8,13 +8,10 @@ Take Walker2d-v1 environment as an example.
 
 Train and generate evaluation data:
 ```shell
-# Train Policy
-bash walker2d_train.sh
-
 #Evaluation Policy with or without Stein control variates
-bash walker2d_eval.sh
+bash walker2d_train_eval_MinVar.sh
 ```
-NB: different max-timesteps lead to different scale of variance: see [results](./results).
+NB: different max-timesteps lead to different scale of variance.
 Max-timesteps can be set through `-m` option.
 
 Visualize the variance plot of different optimization Phi function methods:
