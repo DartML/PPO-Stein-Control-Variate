@@ -264,7 +264,7 @@ def eval_models(env_name, num_episodes,
     policy.load_model(load_dir)
     val_func.load_val_model(load_dir)
 
-    #FIXME: whether need to continue train scaler?
+    #FIXME: refine scaler makes a big difference
     refine_scaler = True
     if refine_scaler == True:
         run_policy(env, policy, 
