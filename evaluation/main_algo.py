@@ -270,23 +270,6 @@ def eval_models(env_name, num_episodes,
     # run_policy(env, policy, 
     #         scaler, num_episodes, 
     #         max_timesteps=max_timesteps) # run a few to init scaler 
-    
-    refit_v = False # if fit value function baseline once again before evaluating 
-    if refit_v == True:
-        logger.log("refit value function baseline")
-
-        episode = 0
-        trajectories, traj_len_list = run_policy(env, policy, scaler, 
-                                num_episodes, max_timesteps=max_timesteps)
-        episode += len(trajectories)
-        add_value(trajectories, val_func)  
-        add_disc_sum_rew(trajectories, gamma)  
-        add_gae(trajectories, gamma, lam)       
-
-        # concatenate all episodes into single NumPy arrays
-        observes, actions, advantages, disc_sum_rew = build_train_set(trajectories)
-        val_func.fit(observes, disc_sum_rew)  # update value function
-        logger.log("done")
 
     episode = 0
 
@@ -309,6 +292,14 @@ def eval_models(env_name, num_episodes,
     v_trajectories = trajectories[int(len(trajectories)/2):]
 
     t_observes, t_actions, t_advantages, t_disc_sum_rew = build_train_set(t_trajectories)
+
+    refit_v = False # if fit value function baseline once again before evaluating 
+    if refit_v == True:
+        logger.log("refit value function baseline")
+        val_func.fit(t_observes, t_disc_sum_rew)  # update value function
+        logger.log("done")
+
+    # build validation data after refit v
     v_observes, v_actions, v_advantages, v_disc_sum_rew = build_train_set(v_trajectories)
 
     sub_folder = "max_timesteps=%s_eval_data/%s_%s_data_seed=%d_max-steps=%d"%(\

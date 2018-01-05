@@ -12,7 +12,7 @@ Train and generate evaluation data:
 bash walker2d_train_eval.sh
 ```
 Different max-timesteps lead to different scale of variance.
-Max-timesteps can be set through `-m` option, larger max-timesteps leads to larger batch-size which need more iterations to fit.
+NB: Max-timesteps can be set through `-m` option, larger max-timesteps leads to larger batch-size which need more iterations to fit.
 
 Visualize the variance plot of different optimization Phi function methods:
 
