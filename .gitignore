@@ -127,7 +127,8 @@ evaluation.bak
 max_timesteps=1000_eval_data
 aft
 pre
-com 
+*/com
+com
 
 # os
 .DS_Store
