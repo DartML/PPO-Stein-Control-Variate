@@ -63,7 +63,7 @@ def run_episode(env, policy, scaler, max_timesteps, animate=False):
             np.array(rewards, dtype=np.float64), np.concatenate(unscaled_obs))
 
 
-def run_policy(env, policy, scaler, num_episodes, max_timesteps):
+def run_policy(env, policy, scaler, num_episodes, max_timesteps, mode):
   
     total_steps = 0
     trajectories = []
@@ -85,7 +85,8 @@ def run_policy(env, policy, scaler, num_episodes, max_timesteps):
         trajectories.append(trajectory)
         
     unscaled = np.concatenate([t['unscaled_obs'] for t in trajectories])
-    scaler.update(unscaled) 
+    if mode == 'save': # only update scaler when training policy, get rid of possible bias when evaluating
+        scaler.update(unscaled) 
     logger.record_dicts({
         "_MeanReward":np.mean([t['rewards'].sum() for t in trajectories]),
         'Steps': total_steps,})
@@ -197,13 +198,13 @@ def train_models(env_name, num_episodes,
     
     run_policy(env, policy, 
             scaler, num_episodes, 
-            max_timesteps=max_timesteps) # run a few to init scaler 
+            max_timesteps=max_timesteps, mode=load_model) # run a few to init scaler 
     
     episode = 0
     for i in range(2000):
         print("sampling and training at %s iteration\n"%(i))
         trajectories, traj_len_list = run_policy(env, policy, scaler, 
-                            num_episodes, max_timesteps=max_timesteps)
+                            num_episodes, max_timesteps=max_timesteps, mode=load_model)
     
         num_traj = len(trajectories)
     
@@ -221,6 +222,11 @@ def train_models(env_name, num_episodes,
     # Save models
     policy.save_policy()
     val_func.save_val_func()
+    refine_scaler = False
+    if refine_scaler == True:
+        run_policy(env, policy, 
+                scaler, num_episodes, 
+                max_timesteps=max_timesteps, mode=load_model) # run a few to refine scaler 
     with open('models/scaler/scaler.pkl', 'wb') as output:
         pickle.dump(scaler, output, pickle.HIGHEST_PROTOCOL)
     logger.log("saved model")
@@ -257,24 +263,16 @@ def eval_models(env_name, num_episodes,
             reg_scale=reg_scale,
             lr_phi=phi_lr,
             phi_obj=phi_obj)
-
  
     logger.log("loading model")
     load_dir = "models/"
     policy.load_model(load_dir)
     val_func.load_val_model(load_dir)
 
-    #FIXME: refine scaler makes a big difference
-    refine_scaler = True
-    if refine_scaler == True:
-        run_policy(env, policy, 
-                scaler, num_episodes, 
-                max_timesteps=max_timesteps) # run a few to continue train scaler 
-
     episode = 0
 
     trajectories, traj_len_list = run_policy(env, policy, scaler, 
-                              num_episodes, max_timesteps=max_timesteps)
+                              num_episodes, max_timesteps=max_timesteps, mode=load_model)
     
     num_traj = len(trajectories)
     logger.log("Avg Length %d total Length %d"%( \

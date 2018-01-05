@@ -117,20 +117,14 @@ wybie
 plot
 
 # misc
-ContinousLinearPhiFunction.py
-ContinousQuadraticPhiFunction.py
-walker2d_eval_500_200.sh
-walker2d_eval_500_500.sh
-Walker2d-v1_avg_variance_seed=13_max-steps=50_phi_obj=MinVar.pdf
-max_timesteps=500_eval_data
-evaluation.bak
-max_timesteps=1000_eval_data
+walker2d*
+max_timesteps*
 aft
 pre
 */com
 com
 fitq.sh
-results
+results*
 
 # os
 .DS_Store
