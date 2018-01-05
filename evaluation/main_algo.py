@@ -264,12 +264,12 @@ def eval_models(env_name, num_episodes,
     policy.load_model(load_dir)
     val_func.load_val_model(load_dir)
 
-    
-    # no need to init scaler when evaluation since we load a good scaler 
-    
-    # run_policy(env, policy, 
-    #         scaler, num_episodes, 
-    #         max_timesteps=max_timesteps) # run a few to init scaler 
+    #FIXME: whether need to continue train scaler?
+    refine_scaler = True
+    if refine_scaler == True:
+        run_policy(env, policy, 
+                scaler, num_episodes, 
+                max_timesteps=max_timesteps) # run a few to continue train scaler 
 
     episode = 0
 
