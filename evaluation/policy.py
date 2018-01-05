@@ -387,8 +387,8 @@ class Policy(object):
         feed_dict[self.old_means_ph] = old_means_np
         loss, kl, entropy = 0, 0, 0
 
-        for _ in range(self.phi_epochs):
-            self.sess.run(self.phi_train_op, feed_dict)
+        # mini batch training
+        self.sess.run(self.phi_train_op, feed_dict)
         
         if load_policy == 'save':
         

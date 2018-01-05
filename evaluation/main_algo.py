@@ -13,6 +13,8 @@ from utils import Scaler
 from policy import Policy
 from datetime import datetime
 from value_function import NNValueFunction
+from utils import Dataset
+import copy
 
 def init_gym(env_name):
    
@@ -267,7 +269,9 @@ def eval_models(env_name, num_episodes,
     logger.log("loading model")
     load_dir = "models/"
     policy.load_model(load_dir)
-    val_func.load_val_model(load_dir)
+    load_v = False #whether load value function baseline or train from scratch
+    if load_v == True:
+        val_func.load_val_model(load_dir)    
 
     episode = 0
 
@@ -280,24 +284,33 @@ def eval_models(env_name, num_episodes,
             np.sum(traj_len_list)))
     
     episode += len(trajectories)
-    add_value(trajectories, val_func)  
-    add_disc_sum_rew(trajectories, gamma)  
-    add_gae(trajectories, gamma, lam) 
-    
+
     #Split data into validation and training data
     random.shuffle(trajectories)
     t_trajectories = trajectories[:int(len(trajectories)/2)]
     v_trajectories = trajectories[int(len(trajectories)/2):]
 
-    t_observes, t_actions, t_advantages, t_disc_sum_rew = build_train_set(t_trajectories)
-
-    refit_v = False # if fit value function baseline once again before evaluating 
+    refit_v = True # if fit value function baseline once again before evaluating 
     if refit_v == True:
+        tt_trajectories = copy.deepcopy(t_trajectories)
+        add_value(tt_trajectories, val_func)  
+        add_disc_sum_rew(tt_trajectories, gamma)  
+        add_gae(tt_trajectories, gamma, lam) 
+        tt_observes, tt_actions, tt_advantages, tt_disc_sum_rew = build_train_set(tt_trajectories)
         logger.log("refit value function baseline")
-        val_func.fit(t_observes, t_disc_sum_rew)  # update value function
+        val_func.fit(tt_observes, tt_disc_sum_rew)  # update value function
         logger.log("done")
 
+    # build training data after refit v
+    add_value(t_trajectories, val_func)  
+    add_disc_sum_rew(t_trajectories, gamma)  
+    add_gae(t_trajectories, gamma, lam) 
+    t_observes, t_actions, t_advantages, t_disc_sum_rew = build_train_set(t_trajectories)
+    
     # build validation data after refit v
+    add_value(v_trajectories, val_func)  
+    add_disc_sum_rew(v_trajectories, gamma)  
+    add_gae(v_trajectories, gamma, lam) 
     v_observes, v_actions, v_advantages, v_disc_sum_rew = build_train_set(v_trajectories)
 
     sub_folder = "max_timesteps=%s_eval_data/%s_%s_data_seed=%d_max-steps=%d"%(\
@@ -312,9 +325,11 @@ def eval_models(env_name, num_episodes,
     with open(sub_folder+'/mc_num_episode=%d.pkl'%(num_episodes), 'wb') as fp:
         pickle.dump(mc_grad_info, fp)
     
-    
-    policy.update(load_model, t_observes, t_actions, t_advantages,
-            use_lr_adjust, ada_kl_penalty, c=1)  # update policy
+    d = Dataset(dict(ob=t_observes, ac=t_actions, atarg=t_advantages, vtarg=t_disc_sum_rew), shuffle=True)
+    for _ in range(phi_epochs): # optim_epochs 
+        for batch in d.iterate_once(128): # optim_batchsize
+            policy.update(load_model, batch['ob'], batch['ac'], batch['atarg'],
+                    use_lr_adjust, ada_kl_penalty, c=1)  # update policy
             
     stein_grad_info = policy.get_batch_gradient(v_observes, \
                     v_actions, v_advantages, c=1.)

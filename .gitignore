@@ -125,6 +125,7 @@ pre
 com
 fitq.sh
 results*
+sandbox
 
 # os
 .DS_Store

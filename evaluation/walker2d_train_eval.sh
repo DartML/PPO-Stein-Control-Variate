@@ -11,13 +11,13 @@ for ((s=13; s<=33; s+=30)) # evaluate on one seed to save time
 		# load Stein PPO and compute variance and save
 		
 		# FitQ
-		j=$((500*$i))
+		j=$((50*$i))
 		echo $j
 		python run.py Walker2d-v1 -ps large -p $j -c 1 -n $i -sha load -m 500 -s $s -po FitQ & 
 		sleep 1.5s
 
 		# MinVar
-		k=$((500*$i))
+		k=$((50*$i))
 		echo $k
 		python run.py Walker2d-v1 -ps large -p $k -c 1 -n $i -sha load -m 500 -s $s -po MinVar &
 		sleep 1.5s
