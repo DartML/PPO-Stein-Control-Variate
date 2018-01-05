@@ -1,10 +1,19 @@
 import numpy as np 
 import pickle
 import os 
+import errno
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt 
 
+def mkdir_p(path):
+    try:
+        os.makedirs(path)
+    except OSError as exc:
+        if exc.errno == errno.EEXIST and os.path.isdir(path):
+            pass
+        else:
+            raise
 
 def load_sample_grads(batch_range, prefix_dir):
     file_dir = prefix_dir
@@ -49,7 +58,7 @@ def gen_index(indices, max_length):
 
 if __name__ == '__main__':
 
-    batch_range= range(10, 80, 10)
+    batch_range= range(10, 70, 10)
 
     env_name = 'Walker2d-v1'
 
@@ -139,6 +148,7 @@ if __name__ == '__main__':
         plt.plot(np.log(mc_x), np.log(plot_mc_vars), label='mc')
         plt.plot(np.log(stein_x), np.log(plot_stein_vars), label='stein')
         plt.legend()
+        mkdir_p('results')
         plt.savefig('results/' + '%s_avg_variance_seed=%s_max-steps=%s_phi_obj=%s.pdf'%(env_name, seed, max_timesteps, phi_obj))
         plt.gcf().clear()
 
