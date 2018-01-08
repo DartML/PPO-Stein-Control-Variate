@@ -269,7 +269,7 @@ def eval_models(env_name, num_episodes,
     logger.log("loading model")
     load_dir = "models/"
     policy.load_model(load_dir)
-    load_v = False #whether load value function baseline or train from scratch
+    load_v = False #whether load value function baseline or train from scratch; no big impact on stein
     if load_v == True:
         val_func.load_val_model(load_dir)    
 
@@ -290,7 +290,7 @@ def eval_models(env_name, num_episodes,
     t_trajectories = trajectories[:int(len(trajectories)/2)]
     v_trajectories = trajectories[int(len(trajectories)/2):]
 
-    refit_v = True # if fit value function baseline once again before evaluating 
+    refit_v = True # if fit value function baseline once again before evaluating; no big impact on stein
     if refit_v == True:
         tt_trajectories = copy.deepcopy(t_trajectories)
         add_value(tt_trajectories, val_func)  

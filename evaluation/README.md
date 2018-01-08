@@ -20,6 +20,3 @@ Visualize the variance plot of different optimization Phi function methods:
 # plot variance figure
 python traj_visualize.py
 ```
-
-## Notice
-Currently the evaluation code is a little messy and not tested thoroughly. We will make it clean and easy for testing soon.
