@@ -126,6 +126,7 @@ com
 fitq.sh
 results*
 sandbox
+minvar.sh
 
 # os
 .DS_Store
